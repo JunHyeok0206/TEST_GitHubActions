@@ -1,0 +1,62 @@
+name: Deploy
+
+on:
+  push:
+    branches: [release]
+    paths-ignore: ['**.md', 'docs/**']
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: '배포 대상'
+        type: choice
+        options: [firebase, test_flight]
+        default: firebase
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      LANE: ${{ github.event.inputs.lane || 'firebase' }}
+    steps:
+      - if: ${{ github.ref != 'refs/heads/release' }}
+        run: |
+          echo "::error::release 브랜치에서만 실행할 수 있습니다 (현재: ${{ github.ref }})"
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.6'
+      - run: xcodebuild -version
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+
+      - uses: jdx/mise-action@v5
+
+      - name: Tuist generate
+        run: mise x -- tuist generate --no-open
+
+      - name: Bump build number and push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          bundle exec fastlane ios bump
+          git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+            "HEAD:refs/heads/${{ github.ref_name }}"
+
+      - name: fastlane ios ${{ env.LANE }}
+        run: bundle exec fastlane ios "$LANE"

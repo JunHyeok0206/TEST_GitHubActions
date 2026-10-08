@@ -1,0 +1,46 @@
+name: Release Start
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '시작할 버전 (x.y.z)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  start:
+    runs-on: macos-26
+    timeout-minutes: 15
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - name: Validate version
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::x.y.z 형식이어야 합니다 ($VERSION)"; exit 1; }
+
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+
+      - name: Ensure branch does not exist
+        run: |
+          if git ls-remote --exit-code --heads origin "release-$VERSION" >/dev/null; then
+            echo "::error::release-$VERSION 브랜치가 이미 있습니다"; exit 1
+          fi
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+
+      - name: Create release-x.y.z with version x.y.z (0)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "release-$VERSION"
+          bundle exec fastlane ios bump version:"$VERSION" build:0
+          git push origin "release-$VERSION"
