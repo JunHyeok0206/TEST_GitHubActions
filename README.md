@@ -12,14 +12,14 @@
 | `fastlane/Fastfile` | `bump`, `firebase`(stub), `test_flight`(stub) |
 | `.github/workflows/release-start.yml` | `workflow_dispatch(version)` → develop 에서 `release-x.y.z` 생성 + `x.y.z (0)` 커밋 push |
 | `.github/workflows/deploy.yml` | `release` push → bump +1 커밋 push → 빌드 → stub 업로드. dispatch 로 `firebase` / `test_flight` 선택 |
-| `.github/workflows/release-note.yml` | `main` push 시 최근 20개 커밋에서 `release:` 커밋을 찾아 GitHub Release 생성 |
+| `.github/workflows/release-note.yml` | `master` push 시 최근 20개 커밋에서 `release:` 커밋을 찾아 GitHub Release 생성 |
 
 ## 브랜치
 
-- `develop`: 기본 브랜치. 기능 개발
+- `develop`: 기능 개발
 - `release-x.y.z`: QA 작업. 수정 PR 의 base
 - `release`: 배포 전용. `release-x.y.z` 에서 오는 merge commit 과 CI 의 bump 커밋만
-- `main`: 상용. `release` 에서 오는 merge commit 만
+- `master`: 기본 브랜치, 상용. `release` 에서 오는 merge commit 만
 
 ## 검증 시나리오
 
@@ -35,7 +35,7 @@
 4. Actions → Deploy → `test_flight` 를 `release` 에서 실행 → `(3)`
    - 같은 것을 `develop` 에서 실행하면 첫 step 에서 실패
 5. `release-1.0.1` 에 빈 커밋 `release: 1.0.1` (본문 = 릴리즈 노트) → PR 머지 → `(4)`
-   - PR `release → main` merge commit → Release Note 워크플로가 태그 `1.0.1` 과 GitHub Release 생성
+   - PR `release → master` merge commit → Release Note 워크플로가 태그 `1.0.1` 과 GitHub Release 생성
 6. PR `release → develop` (back-merge) 머지 → Release Start `1.0.2` → PR `release-1.0.2 → release`
    - 충돌 없이 `1.0.2 (1)` 로 넘어감
 7. 실패 재현: `release-1.0.2` 에서 로컬로 `bundle exec fastlane ios bump` 후 push → PR 에 Info.plist 충돌 표시
